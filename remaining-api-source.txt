@@ -1,0 +1,1342 @@
+AFRIBLOOD API IMPLEMENTATION SOURCE
+
+===== prisma\schema.prisma =====
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMERATIONS
+// ==========================================
+
+enum FacilityType {
+  BLOOD_BANK
+  COLLECTION_CENTER
+  LABORATORY
+  HOSPITAL
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  FACILITY_ADMIN
+  BLOOD_BANK_OFFICER
+  LAB_TECHNICIAN
+  HOSPITAL_OFFICER
+  LOGISTICS_OFFICER
+  ANALYST
+}
+
+enum BloodGroup {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  AB_POS
+  AB_NEG
+  O_POS
+  O_NEG
+}
+
+enum ComponentType {
+  WHOLE_BLOOD
+  RED_CELLS
+  PLASMA
+  PLATELETS
+}
+
+enum DonationStatus {
+  COLLECTED
+  PROCESSING
+  TESTED
+  COMPLETED
+  REJECTED
+}
+
+enum TestResult {
+  PENDING
+  NEGATIVE
+  POSITIVE
+  INDETERMINATE
+}
+
+enum BloodUnitStatus {
+  QUARANTINED
+  AVAILABLE
+  RESERVED
+  IN_TRANSIT
+  ISSUED
+  TRANSFUSED
+  EXPIRED
+  DISCARDED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  CANCELLED
+  REJECTED
+}
+
+enum RequestPriority {
+  ROUTINE
+  URGENT
+  EMERGENCY
+}
+
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  FULFILLED
+  EXPIRED
+}
+
+enum TransferStatus {
+  REQUESTED
+  APPROVED
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+enum RecommendationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+// ==========================================
+// 1. HEALTHCARE FACILITIES
+// ==========================================
+
+model Facility {
+  id        String       @id @default(uuid())
+  name      String
+  code      String       @unique
+  type      FacilityType
+  country   String
+  region    String?
+  district  String?
+  address   String?
+  latitude  Float?
+  longitude Float?
+  isActive  Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  donations        Donation[]
+  bloodUnits       BloodUnit[]
+  hospitalRequests HospitalRequest[]
+
+  outgoingTransfers BloodTransfer[] @relation("TransferSource")
+  incomingTransfers BloodTransfer[] @relation("TransferDestination")
+
+  forecasts           DemandForecast[]
+  recommendationsFrom RedistributionRecommendation[] @relation("RecommendationSource")
+  recommendationsTo   RedistributionRecommendation[] @relation("RecommendationDestination")
+
+  @@index([country, region])
+}
+
+// ==========================================
+// 2. USERS AND ACCESS CONTROL
+// ==========================================
+
+model User {
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  isActive     Boolean  @default(true)
+
+  facilityId String?
+  facility   Facility? @relation(fields: [facilityId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@index([facilityId])
+  notifications Notification[]
+}
+
+// ==========================================
+// 3. BLOOD DONORS
+// ==========================================
+
+model Donor {
+  id          String      @id @default(uuid())
+  donorCode   String      @unique
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  bloodGroup  BloodGroup?
+  phone       String?
+  email       String?
+  isActive    Boolean     @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  donations Donation[]
+}
+
+// ==========================================
+// 4. BLOOD DONATIONS
+// ==========================================
+
+model Donation {
+  id           String         @id @default(uuid())
+  donationCode String         @unique
+  donorId      String
+  facilityId   String
+  donatedAt    DateTime
+  status       DonationStatus @default(COLLECTED)
+  volumeMl     Int?
+  notes        String?
+
+  donor    Donor    @relation(fields: [donorId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  bloodUnits BloodUnit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([donorId, donatedAt])
+  @@index([facilityId, donatedAt])
+}
+
+// ==========================================
+// 5. BLOOD INVENTORY
+// ==========================================
+
+model BloodUnit {
+  id         String          @id @default(uuid())
+  unitCode   String          @unique
+  donationId String
+  facilityId String
+  bloodGroup BloodGroup
+  component  ComponentType
+  status     BloodUnitStatus @default(QUARANTINED)
+
+  volumeMl    Int?
+  collectedAt DateTime
+  expiresAt   DateTime
+  releasedAt  DateTime?
+  issuedAt    DateTime?
+
+  donation Donation @relation(fields: [donationId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  labTests     LabTest[]
+  reservations BloodReservation[]
+  events       BloodUnitEvent[]
+  transfers    BloodTransfer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([facilityId, status])
+  @@index([bloodGroup, component, status])
+  @@index([expiresAt])
+  @@index([donationId])
+}
+
+// ==========================================
+// 6. LABORATORY TESTING
+// ==========================================
+
+model LabTest {
+  id           String     @id @default(uuid())
+  bloodUnitId  String
+  testName     String
+  result       TestResult @default(PENDING)
+  testedAt     DateTime?
+  technicianId String?
+  notes        String?
+
+  bloodUnit BloodUnit @relation(fields: [bloodUnitId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bloodUnitId])
+  @@index([result])
+}
+
+// ==========================================
+// 7. HOSPITAL BLOOD REQUESTS
+// ==========================================
+
+model HospitalRequest {
+  id          String          @id @default(uuid())
+  requestCode String          @unique
+  facilityId  String
+  bloodGroup  BloodGroup
+  component   ComponentType
+  quantity    Int
+  priority    RequestPriority @default(ROUTINE)
+  status      RequestStatus   @default(PENDING)
+
+  requiredBy DateTime?
+  notes      String?
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  reservations BloodReservation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([facilityId, status])
+  @@index([bloodGroup, component])
+}
+
+// ==========================================
+// 8. BLOOD RESERVATIONS
+// ==========================================
+
+model BloodReservation {
+  id          String            @id @default(uuid())
+  requestId   String
+  bloodUnitId String
+  status      ReservationStatus @default(ACTIVE)
+
+  reservedAt DateTime  @default(now())
+  expiresAt  DateTime?
+
+  request   HospitalRequest @relation(fields: [requestId], references: [id])
+  bloodUnit BloodUnit       @relation(fields: [bloodUnitId], references: [id])
+
+  @@index([requestId])
+  @@index([bloodUnitId, status])
+}
+
+// ==========================================
+// 9. BLOOD TRANSFERS
+// ==========================================
+
+model BloodTransfer {
+  id                    String         @id @default(uuid())
+  transferCode          String         @unique
+  bloodUnitId           String
+  sourceFacilityId      String
+  destinationFacilityId String
+  status                TransferStatus @default(REQUESTED)
+
+  requestedAt  DateTime  @default(now())
+  approvedAt   DateTime?
+  dispatchedAt DateTime?
+  receivedAt   DateTime?
+  notes        String?
+
+  bloodUnit BloodUnit @relation(fields: [bloodUnitId], references: [id])
+
+  sourceFacility      Facility @relation("TransferSource", fields: [sourceFacilityId], references: [id])
+  destinationFacility Facility @relation("TransferDestination", fields: [destinationFacilityId], references: [id])
+
+  @@index([sourceFacilityId, status])
+  @@index([destinationFacilityId, status])
+  @@index([bloodUnitId])
+}
+
+// ==========================================
+// 10. BLOOD UNIT TRACEABILITY
+// ==========================================
+
+model BloodUnitEvent {
+  id          String  @id @default(uuid())
+  bloodUnitId String
+  eventType   String
+  description String?
+  actorId     String?
+  facilityId  String?
+  metadata    Json?
+
+  occurredAt DateTime @default(now())
+
+  bloodUnit BloodUnit @relation(fields: [bloodUnitId], references: [id])
+
+  @@index([bloodUnitId, occurredAt])
+}
+
+// ==========================================
+// 11. AI DEMAND FORECASTS
+// ==========================================
+
+model DemandForecast {
+  id              String        @id @default(uuid())
+  facilityId      String
+  bloodGroup      BloodGroup
+  component       ComponentType
+  forecastDate    DateTime
+  predictedUnits  Int
+  modelVersion    String?
+  confidenceScore Float?
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([facilityId, forecastDate])
+  @@index([bloodGroup, component])
+}
+
+// ==========================================
+// 12. AI REDISTRIBUTION RECOMMENDATIONS
+// ==========================================
+
+model RedistributionRecommendation {
+  id                    String               @id @default(uuid())
+  sourceFacilityId      String
+  destinationFacilityId String
+  bloodGroup            BloodGroup
+  component             ComponentType
+  suggestedUnits        Int
+  reason                String
+  confidenceScore       Float?
+  status                RecommendationStatus @default(PENDING)
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+  reviewedBy String?
+
+  sourceFacility      Facility @relation("RecommendationSource", fields: [sourceFacilityId], references: [id])
+  destinationFacility Facility @relation("RecommendationDestination", fields: [destinationFacilityId], references: [id])
+
+  @@index([sourceFacilityId, status])
+  @@index([destinationFacilityId, status])
+}
+
+// ==========================================
+// 13. SYSTEM AUDIT LOGS
+// ==========================================
+
+model AuditLog {
+  id        String  @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+}
+
+// Notifications belong to a single recipient. No patient information should be placed here.
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  category  String   @default("SYSTEM")
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+}
+
+===== src\app.module.ts =====
+
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { PrismaModule } from './prisma/prisma.module.js';
+import { FacilitiesModule } from './facilities/facilities.module.js';
+import { DonorsModule } from './donors/donors.module.js';
+import { DonationsModule } from './donations/donations.module.js';
+import { InventoryModule } from './inventory/inventory.module.js';
+import { LaboratoryModule } from './laboratory/laboratory.module.js';
+import { HospitalRequestsModule } from './hospital-requests/hospital-requests.module.js';
+import { StockMatchingModule } from './stock-matching/stock-matching.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { UsersModule } from './users/users.module.js';
+import { RolesModule } from './roles/roles.module.js';
+import { BloodTransfersModule } from './blood-transfers/blood-transfers.module.js';
+import { BloodReservationsModule } from './blood-reservations/blood-reservations.module.js';
+import { BloodReleaseModule } from './blood-release/blood-release.module.js';
+import { TransfusionsModule } from './transfusions/transfusions.module.js';
+import { BloodUnitEventsModule } from './blood-unit-events/blood-unit-events.module.js';
+import { AuditLogsModule } from './audit-logs/audit-logs.module.js';
+import { DemandForecastingModule } from './demand-forecasting/demand-forecasting.module.js';
+import { RedistributionModule } from './redistribution/redistribution.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
+import { ReportsModule } from './reports/reports.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { InteroperabilityModule } from './interoperability/interoperability.module.js';
+import { HealthModule } from './health/health.module.js';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    PrismaModule,
+    FacilitiesModule,
+    DonorsModule,
+    DonationsModule,
+    InventoryModule,
+    LaboratoryModule,
+    HospitalRequestsModule,
+    StockMatchingModule,
+    AuthModule,
+    UsersModule,
+    RolesModule,
+    BloodTransfersModule,
+    BloodReservationsModule,
+    BloodReleaseModule,
+    TransfusionsModule,
+    BloodUnitEventsModule,
+    AuditLogsModule,
+    DemandForecastingModule,
+    RedistributionModule,
+    DashboardModule,
+    AnalyticsModule,
+    ReportsModule,
+    NotificationsModule,
+    InteroperabilityModule,
+    HealthModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-release\blood-release.controller.ts =====
+import { Controller } from '@nestjs/common';
+
+@Controller('blood-release')
+export class BloodReleaseController {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-release\blood-release.module.ts =====
+import { Module } from '@nestjs/common';
+import { BloodReleaseController } from './blood-release.controller.js';
+import { BloodReleaseService } from './blood-release.service.js';
+
+@Module({
+  controllers: [BloodReleaseController],
+  providers: [BloodReleaseService]
+})
+export class BloodReleaseModule {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-release\blood-release.service.ts =====
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class BloodReleaseService {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\transfusions\transfusions.controller.ts =====
+import { Controller } from '@nestjs/common';
+
+@Controller('transfusions')
+export class TransfusionsController {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\transfusions\transfusions.module.ts =====
+import { Module } from '@nestjs/common';
+import { TransfusionsController } from './transfusions.controller.js';
+import { TransfusionsService } from './transfusions.service.js';
+
+@Module({
+  controllers: [TransfusionsController],
+  providers: [TransfusionsService]
+})
+export class TransfusionsModule {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\transfusions\transfusions.service.ts =====
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class TransfusionsService {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-reservations\blood-reservations.controller.ts =====
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { BloodReservationsService } from './blood-reservations.service.js';
+
+@Controller('blood-reservations')
+@UseGuards(JwtAuthGuard)
+export class BloodReservationsController {
+  constructor(private readonly service: BloodReservationsService) {}
+  @Get()
+  list(@Req() req: any) { return this.service.list(req.user); }
+  @Get(':id')
+  detail(@Param('id') id: string, @Req() req: any) { return this.service.detail(id, req.user); }
+  @Post()
+  create(@Body() body: { requestId?: string; bloodUnitId?: string; expiresAt?: string }, @Req() req: any) {
+    return this.service.create(body, req.user);
+  }
+  @Patch(':id/release')
+  release(@Param('id') id: string, @Req() req: any) { return this.service.release(id, req.user); }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-reservations\blood-reservations.module.ts =====
+import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module.js';
+import { BloodReservationsController } from './blood-reservations.controller.js';
+import { BloodReservationsService } from './blood-reservations.service.js';
+@Module({
+  imports: [AuthModule],
+  controllers: [BloodReservationsController],
+  providers: [BloodReservationsService],
+})
+export class BloodReservationsModule {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-reservations\blood-reservations.service.ts =====
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service.js';
+
+@Injectable()
+export class BloodReservationsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  private scope(user: any): string | null {
+    if (!user?.id || !user?.role) throw new ForbiddenException('Authentication required');
+    if (user.role === 'SUPER_ADMIN') return null;
+    if (!user.facilityId) throw new ForbiddenException('Facility assignment required');
+    return user.facilityId;
+  }
+
+  private assertOfficer(user: any): void {
+    if (!['SUPER_ADMIN', 'FACILITY_ADMIN', 'BLOOD_BANK_OFFICER'].includes(user?.role)) {
+      throw new ForbiddenException('Reservation management role required');
+    }
+  }
+
+  list(user: any) {
+    const facilityId = this.scope(user);
+    return this.prisma.bloodReservation.findMany({
+      where: facilityId ? { request: { facilityId } } : {},
+      include: { request: true, bloodUnit: true },
+      orderBy: { reservedAt: 'desc' }, take: 100,
+    });
+  }
+
+  async detail(id: string, user: any) {
+    const facilityId = this.scope(user);
+    const reservation = await this.prisma.bloodReservation.findUnique({
+      where: { id }, include: { request: true, bloodUnit: true },
+    });
+    if (!reservation || (facilityId && reservation.request.facilityId !== facilityId)) {
+      throw new NotFoundException('Reservation not found');
+    }
+    return reservation;
+  }
+
+  async create(body: { requestId?: string; bloodUnitId?: string; expiresAt?: string }, user: any) {
+    this.assertOfficer(user);
+    const facilityId = this.scope(user);
+    if (!body?.requestId || !body?.bloodUnitId) throw new BadRequestException('requestId and bloodUnitId are required');
+    let expiresAt: Date | undefined;
+    if (body.expiresAt !== undefined) {
+      expiresAt = new Date(body.expiresAt);
+      if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) throw new BadRequestException('expiresAt must be a future ISO date');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const request = await tx.hospitalRequest.findUnique({ where: { id: body.requestId! } });
+      const unit = await tx.bloodUnit.findUnique({ where: { id: body.bloodUnitId! } });
+      if (!request || !unit) throw new NotFoundException('Request or blood unit not found');
+      if (facilityId && request.facilityId !== facilityId) throw new ForbiddenException('Request belongs to another facility');
+      // Conservative facility policy: only units held at the requesting facility can be reserved.
+      if (unit.facilityId !== request.facilityId) throw new ConflictException('Unit must be at the requesting facility');
+      if (!['APPROVED', 'PARTIALLY_FULFILLED'].includes(request.status)) throw new ConflictException('Request is not approved');
+      if (unit.status !== 'AVAILABLE') throw new ConflictException('Blood unit is not available');
+      if (unit.expiresAt <= new Date()) throw new ConflictException('Blood unit has expired');
+      if (unit.bloodGroup !== request.bloodGroup || unit.component !== request.component) {
+        throw new ConflictException('Blood group/component mismatch; clinical compatibility workflow required');
+      }
+      const existing = await tx.bloodReservation.count({ where: { bloodUnitId: unit.id, status: 'ACTIVE' } });
+      if (existing) throw new ConflictException('Unit already has an active reservation');
+      const allocated = await tx.bloodReservation.count({ where: { requestId: request.id, status: { in: ['ACTIVE', 'FULFILLED'] } } });
+      if (allocated >= request.quantity) throw new ConflictException('Request quantity already reserved');
+      const changed = await tx.bloodUnit.updateMany({ where: { id: unit.id, status: 'AVAILABLE' }, data: { status: 'RESERVED' } });
+      if (changed.count !== 1) throw new ConflictException('Blood unit was reserved concurrently');
+      const reservation = await tx.bloodReservation.create({
+        data: { requestId: request.id, bloodUnitId: unit.id, status: 'ACTIVE', ...(expiresAt ? { expiresAt } : {}) },
+      });
+      await tx.bloodUnitEvent.create({ data: { bloodUnitId: unit.id, eventType: 'RESERVED', actorId: user.id, facilityId: unit.facilityId, description: 'Blood unit reserved for an approved hospital request' } });
+      return reservation;
+    });
+  }
+
+  async release(id: string, user: any) {
+    this.assertOfficer(user);
+    const facilityId = this.scope(user);
+    return this.prisma.$transaction(async (tx) => {
+      const reservation = await tx.bloodReservation.findUnique({ where: { id }, include: { request: true, bloodUnit: true } });
+      if (!reservation || (facilityId && reservation.request.facilityId !== facilityId)) throw new NotFoundException('Reservation not found');
+      if (reservation.status !== 'ACTIVE') throw new ConflictException('Reservation is not active');
+      if (reservation.bloodUnit.status !== 'RESERVED') throw new ConflictException('Unit is not in RESERVED state');
+      const changed = await tx.bloodReservation.updateMany({ where: { id, status: 'ACTIVE' }, data: { status: 'RELEASED' } });
+      if (changed.count !== 1) throw new ConflictException('Reservation state changed concurrently');
+      const remaining = await tx.bloodReservation.count({ where: { bloodUnitId: reservation.bloodUnitId, status: 'ACTIVE' } });
+      if (remaining === 0) {
+        await tx.bloodUnit.updateMany({ where: { id: reservation.bloodUnitId, status: 'RESERVED' }, data: { status: 'AVAILABLE' } });
+      }
+      await tx.bloodUnitEvent.create({ data: { bloodUnitId: reservation.bloodUnitId, eventType: 'RESERVATION_RELEASED', actorId: user.id, facilityId: reservation.bloodUnit.facilityId, description: 'Reservation released; not a clinical blood issue' } });
+      return tx.bloodReservation.findUnique({ where: { id } });
+    });
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\inventory\inventory.controller.ts =====
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  ParseUUIDPipe,
+} from '@nestjs/common';
+
+import { InventoryService } from './inventory.service.js';
+import { CreateBloodUnitDto } from './dto/create-blood-unit.dto.js';
+
+@Controller('inventory')
+export class InventoryController {
+  constructor(
+    private readonly inventoryService: InventoryService,
+  ) {}
+
+  @Post()
+  create(@Body() dto: CreateBloodUnitDto) {
+    return this.inventoryService.create(dto);
+  }
+
+  @Get()
+  findAll() {
+    return this.inventoryService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.inventoryService.findOne(id);
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\inventory\inventory.module.ts =====
+import { Module } from '@nestjs/common';
+import { InventoryController } from './inventory.controller.js';
+import { InventoryService } from './inventory.service.js';
+
+@Module({
+  controllers: [InventoryController],
+  providers: [InventoryService],
+  exports: [InventoryService],
+})
+export class InventoryModule {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\inventory\inventory.service.ts =====
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service.js';
+import { Prisma } from '../generated/prisma/client.js';
+import { CreateBloodUnitDto } from './dto/create-blood-unit.dto.js';
+
+@Injectable()
+export class InventoryService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateBloodUnitDto) {
+    const donation = await this.prisma.donation.findUnique({
+      where: { id: dto.donationId },
+      include: { donor: true },
+    });
+
+    if (!donation) {
+      throw new NotFoundException('Donation not found');
+    }
+
+    if (donation.status === 'REJECTED') {
+      throw new BadRequestException(
+        'Cannot register units from a rejected donation',
+      );
+    }
+
+    if (donation.facilityId !== dto.facilityId) {
+      throw new BadRequestException(
+        'Facility must match the collection facility',
+      );
+    }
+
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: dto.facilityId },
+    });
+
+    if (!facility || !facility.isActive) {
+      throw new NotFoundException('Active facility not found');
+    }
+
+    if (
+      donation.donor.bloodGroup &&
+      donation.donor.bloodGroup !== dto.bloodGroup
+    ) {
+      throw new BadRequestException(
+        'Blood group conflicts with donor record',
+      );
+    }
+
+    const collectedAt = new Date(dto.collectedAt);
+    const expiresAt = new Date(dto.expiresAt);
+
+    if (
+      !Number.isFinite(collectedAt.getTime()) ||
+      !Number.isFinite(expiresAt.getTime()) ||
+      expiresAt <= collectedAt
+    ) {
+      throw new BadRequestException(
+        'Expiry must be after collection',
+      );
+    }
+
+    if (expiresAt <= new Date()) {
+      throw new BadRequestException(
+        'Cannot register an already expired unit',
+      );
+    }
+
+    try {
+      return await this.prisma.bloodUnit.create({
+        data: {
+          unitCode: dto.unitCode,
+          donationId: dto.donationId,
+          facilityId: dto.facilityId,
+          bloodGroup: dto.bloodGroup,
+          component: dto.component,
+          collectedAt,
+          expiresAt,
+          volumeMl: dto.volumeMl,
+          status: 'QUARANTINED',
+        },
+        select: {
+          id: true,
+          unitCode: true,
+          bloodGroup: true,
+          component: true,
+          status: true,
+          expiresAt: true,
+          facilityId: true,
+          donationId: true,
+        },
+      });
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Blood unit code already exists',
+        );
+      }
+      throw error;
+    }
+  }
+
+  findAll() {
+    return this.prisma.bloodUnit.findMany({
+      select: {
+        id: true,
+        unitCode: true,
+        bloodGroup: true,
+        component: true,
+        status: true,
+        collectedAt: true,
+        expiresAt: true,
+        facilityId: true,
+        donationId: true,
+      },
+      orderBy: { expiresAt: 'asc' },
+      take: 100,
+    });
+  }
+
+  async findOne(id: string) {
+    const unit = await this.prisma.bloodUnit.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        unitCode: true,
+        bloodGroup: true,
+        component: true,
+        status: true,
+        collectedAt: true,
+        expiresAt: true,
+        facilityId: true,
+        donationId: true,
+      },
+    });
+
+    if (!unit) {
+      throw new NotFoundException('Blood unit not found');
+    }
+
+    return unit;
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\hospital-requests\hospital-requests.controller.ts =====
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  ParseUUIDPipe,
+} from '@nestjs/common';
+
+import { HospitalRequestsService } from './hospital-requests.service.js';
+import { CreateHospitalRequestDto } from './dto/create-hospital-request.dto.js';
+
+@Controller('hospital-requests')
+export class HospitalRequestsController {
+  constructor(
+    private readonly service: HospitalRequestsService,
+  ) {}
+
+  @Post()
+  create(@Body() dto: CreateHospitalRequestDto) {
+    return this.service.create(dto);
+  }
+
+  @Get()
+  findAll() {
+    return this.service.findAll();
+  }
+
+  @Get('facility/:facilityId')
+  findByFacility(
+    @Param('facilityId', ParseUUIDPipe) facilityId: string,
+  ) {
+    return this.service.findByFacility(facilityId);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findOne(id);
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\hospital-requests\hospital-requests.module.ts =====
+import { Module } from '@nestjs/common';
+import { HospitalRequestsController } from './hospital-requests.controller.js';
+import { HospitalRequestsService } from './hospital-requests.service.js';
+
+@Module({
+  controllers: [HospitalRequestsController],
+  providers: [HospitalRequestsService],
+  exports: [HospitalRequestsService],
+})
+export class HospitalRequestsModule {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\hospital-requests\hospital-requests.service.ts =====
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service.js';
+import { Prisma } from '../generated/prisma/client.js';
+import { CreateHospitalRequestDto } from './dto/create-hospital-request.dto.js';
+
+@Injectable()
+export class HospitalRequestsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateHospitalRequestDto) {
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: dto.facilityId },
+    });
+
+    if (!facility || !facility.isActive) {
+      throw new NotFoundException(
+        'Active requesting facility not found',
+      );
+    }
+
+    if (facility.type !== 'HOSPITAL') {
+      throw new BadRequestException(
+        'Blood requests must originate from a hospital',
+      );
+    }
+
+    const requiredBy = dto.requiredBy
+      ? new Date(dto.requiredBy)
+      : undefined;
+
+    if (requiredBy && requiredBy < new Date()) {
+      throw new BadRequestException(
+        'Required-by date cannot be in the past',
+      );
+    }
+
+    try {
+      return await this.prisma.hospitalRequest.create({
+        data: {
+          requestCode: dto.requestCode,
+          facilityId: dto.facilityId,
+          bloodGroup: dto.bloodGroup,
+          component: dto.component,
+          quantity: dto.quantity,
+          priority: dto.priority,
+          requiredBy,
+          notes: dto.notes,
+          status: 'PENDING',
+        },
+        select: {
+          id: true,
+          requestCode: true,
+          facilityId: true,
+          bloodGroup: true,
+          component: true,
+          quantity: true,
+          priority: true,
+          status: true,
+          requiredBy: true,
+          createdAt: true,
+        },
+      });
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Request code already exists',
+        );
+      }
+      throw error;
+    }
+  }
+
+  findAll() {
+    return this.prisma.hospitalRequest.findMany({
+      select: {
+        id: true,
+        requestCode: true,
+        facilityId: true,
+        bloodGroup: true,
+        component: true,
+        quantity: true,
+        priority: true,
+        status: true,
+        requiredBy: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  async findOne(id: string) {
+    const request = await this.prisma.hospitalRequest.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        requestCode: true,
+        facilityId: true,
+        bloodGroup: true,
+        component: true,
+        quantity: true,
+        priority: true,
+        status: true,
+        requiredBy: true,
+        createdAt: true,
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException(
+        'Hospital blood request not found',
+      );
+    }
+
+    return request;
+  }
+
+  async findByFacility(facilityId: string) {
+    return this.prisma.hospitalRequest.findMany({
+      where: { facilityId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\auth\auth.controller.ts =====
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+} from '@nestjs/common';
+
+import { AuthService } from './auth.service.js';
+import { LoginDto } from './dto/login.dto.js';
+import { Public } from './decorators/public.decorator.js';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('login')
+  login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
+  }
+
+  @Get('me')
+  me(@Req() request: any) {
+    return request.user;
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\auth\auth.module.ts =====
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+
+import { AuthController } from './auth.controller.js';
+import { AuthService } from './auth.service.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { RolesGuard } from './guards/roles.guard.js';
+
+@Module({
+  imports: [
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>('JWT_SECRET');
+
+        if (!secret || secret.length < 32) {
+          throw new Error('JWT_SECRET must contain at least 32 characters');
+        }
+
+        return {
+          secret,
+          signOptions: { expiresIn: '15m' },
+        };
+      },
+    }),
+  ],
+  controllers: [AuthController],
+  providers: [
+    AuthService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
+  exports: [JwtModule],
+})
+export class AuthModule {}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\auth\auth.service.ts =====
+import {
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { LoginDto } from './dto/login.dto.js';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+  ) {}
+
+  async login(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.trim().toLowerCase() },
+    });
+
+    const validPassword = user
+      ? await bcrypt.compare(dto.password, user.passwordHash)
+      : false;
+
+    if (!user || !user.isActive || !validPassword) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const accessToken = await this.jwt.signAsync({
+      sub: user.id,
+    });
+
+    return {
+      accessToken,
+      tokenType: 'Bearer',
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        facilityId: user.facilityId,
+      },
+    };
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-unit-events\blood-unit-events.controller.ts =====
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+} from '@nestjs/common';
+
+import { BloodUnitEventsService } from './blood-unit-events.service.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { UserRole } from '../generated/prisma/enums.js';
+
+@Controller('blood-unit-events')
+@Roles(UserRole.SUPER_ADMIN)
+export class BloodUnitEventsController {
+  constructor(
+    private readonly service: BloodUnitEventsService,
+  ) {}
+
+  @Get()
+  getRecentEvents() {
+    return this.service.getRecentEvents();
+  }
+
+  @Get('unit/:bloodUnitId')
+  getUnitHistory(
+    @Param('bloodUnitId', ParseUUIDPipe) bloodUnitId: string,
+  ) {
+    return this.service.getUnitHistory(bloodUnitId);
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-unit-events\blood-unit-events.module.ts =====
+import { AuthModule } from '../auth/auth.module.js';
+import { TraceabilityController } from './traceability.controller.js';
+import { Module } from '@nestjs/common';
+import { BloodUnitEventsController } from './blood-unit-events.controller.js';
+import { BloodUnitEventsService } from './blood-unit-events.service.js';
+
+@Module({
+  imports: [AuthModule],
+  controllers: [BloodUnitEventsController, TraceabilityController],
+  providers: [BloodUnitEventsService],
+  exports: [BloodUnitEventsService],
+})
+export class BloodUnitEventsModule {}
+
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-unit-events\blood-unit-events.service.ts =====
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service.js';
+
+@Injectable()
+export class BloodUnitEventsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getUnitHistory(bloodUnitId: string) {
+    const unit = await this.prisma.bloodUnit.findUnique({
+      where: { id: bloodUnitId },
+      select: {
+        id: true,
+        unitCode: true,
+        bloodGroup: true,
+        component: true,
+        status: true,
+        facilityId: true,
+        collectedAt: true,
+        expiresAt: true,
+      },
+    });
+
+    if (!unit) {
+      throw new NotFoundException('Blood unit not found');
+    }
+
+    const events = await this.prisma.bloodUnitEvent.findMany({
+      where: { bloodUnitId },
+      orderBy: [
+        { occurredAt: 'asc' },
+        { id: 'asc' },
+      ],
+    });
+
+    return {
+      bloodUnit: unit,
+      eventCount: events.length,
+      events,
+    };
+  }
+
+  async getRecentEvents() {
+    return this.prisma.bloodUnitEvent.findMany({
+      orderBy: { occurredAt: 'desc' },
+      take: 100,
+    });
+  }
+}
+
+===== C:\Users\THINKPAD\afriblood-backend\src\blood-unit-events\traceability.controller.ts =====
+import { Controller, Get, Req, UseGuards, ForbiddenException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+@Controller('traceability')
+@UseGuards(JwtAuthGuard)
+export class TraceabilityController {
+  constructor(private readonly prisma: PrismaService) {}
+  @Get()
+  list(@Req() req:any) {
+    const user=req.user;
+    if (!user?.id || !user?.role) throw new ForbiddenException('Authentication required');
+    if (user.role!=='SUPER_ADMIN' && !user.facilityId) throw new ForbiddenException('Facility assignment required');
+    return this.prisma.bloodUnitEvent.findMany({
+      where:user.role==='SUPER_ADMIN'?{}:{bloodUnit:{facilityId:user.facilityId}},
+      orderBy:{occurredAt:'desc'},take:100,
+      select:{id:true,bloodUnitId:true,eventType:true,description:true,facilityId:true,occurredAt:true,
+        bloodUnit:{select:{unitCode:true,bloodGroup:true,component:true,status:true,facilityId:true}}}
+    });
+  }
+}

@@ -1,0 +1,18 @@
+import * as Prisma from './internal/prismaNamespaceBrowser.js';
+export { Prisma };
+export * as $Enums from './enums.js';
+export * from './enums.js';
+export type Facility = Prisma.FacilityModel;
+export type User = Prisma.UserModel;
+export type Donor = Prisma.DonorModel;
+export type Donation = Prisma.DonationModel;
+export type BloodUnit = Prisma.BloodUnitModel;
+export type LabTest = Prisma.LabTestModel;
+export type HospitalRequest = Prisma.HospitalRequestModel;
+export type BloodReservation = Prisma.BloodReservationModel;
+export type BloodTransfer = Prisma.BloodTransferModel;
+export type BloodUnitEvent = Prisma.BloodUnitEventModel;
+export type DemandForecast = Prisma.DemandForecastModel;
+export type RedistributionRecommendation = Prisma.RedistributionRecommendationModel;
+export type AuditLog = Prisma.AuditLogModel;
+export type Notification = Prisma.NotificationModel;

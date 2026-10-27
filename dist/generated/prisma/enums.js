@@ -1,0 +1,87 @@
+export const FacilityType = {
+    BLOOD_BANK: 'BLOOD_BANK',
+    COLLECTION_CENTER: 'COLLECTION_CENTER',
+    LABORATORY: 'LABORATORY',
+    HOSPITAL: 'HOSPITAL'
+};
+export const UserRole = {
+    SUPER_ADMIN: 'SUPER_ADMIN',
+    FACILITY_ADMIN: 'FACILITY_ADMIN',
+    BLOOD_BANK_OFFICER: 'BLOOD_BANK_OFFICER',
+    LAB_TECHNICIAN: 'LAB_TECHNICIAN',
+    HOSPITAL_OFFICER: 'HOSPITAL_OFFICER',
+    LOGISTICS_OFFICER: 'LOGISTICS_OFFICER',
+    ANALYST: 'ANALYST'
+};
+export const BloodGroup = {
+    A_POS: 'A_POS',
+    A_NEG: 'A_NEG',
+    B_POS: 'B_POS',
+    B_NEG: 'B_NEG',
+    AB_POS: 'AB_POS',
+    AB_NEG: 'AB_NEG',
+    O_POS: 'O_POS',
+    O_NEG: 'O_NEG'
+};
+export const ComponentType = {
+    WHOLE_BLOOD: 'WHOLE_BLOOD',
+    RED_CELLS: 'RED_CELLS',
+    PLASMA: 'PLASMA',
+    PLATELETS: 'PLATELETS'
+};
+export const DonationStatus = {
+    COLLECTED: 'COLLECTED',
+    PROCESSING: 'PROCESSING',
+    TESTED: 'TESTED',
+    COMPLETED: 'COMPLETED',
+    REJECTED: 'REJECTED'
+};
+export const TestResult = {
+    PENDING: 'PENDING',
+    NEGATIVE: 'NEGATIVE',
+    POSITIVE: 'POSITIVE',
+    INDETERMINATE: 'INDETERMINATE'
+};
+export const BloodUnitStatus = {
+    QUARANTINED: 'QUARANTINED',
+    AVAILABLE: 'AVAILABLE',
+    RESERVED: 'RESERVED',
+    IN_TRANSIT: 'IN_TRANSIT',
+    ISSUED: 'ISSUED',
+    TRANSFUSED: 'TRANSFUSED',
+    EXPIRED: 'EXPIRED',
+    DISCARDED: 'DISCARDED'
+};
+export const RequestStatus = {
+    PENDING: 'PENDING',
+    APPROVED: 'APPROVED',
+    PARTIALLY_FULFILLED: 'PARTIALLY_FULFILLED',
+    FULFILLED: 'FULFILLED',
+    CANCELLED: 'CANCELLED',
+    REJECTED: 'REJECTED'
+};
+export const RequestPriority = {
+    ROUTINE: 'ROUTINE',
+    URGENT: 'URGENT',
+    EMERGENCY: 'EMERGENCY'
+};
+export const ReservationStatus = {
+    ACTIVE: 'ACTIVE',
+    RELEASED: 'RELEASED',
+    FULFILLED: 'FULFILLED',
+    EXPIRED: 'EXPIRED'
+};
+export const TransferStatus = {
+    REQUESTED: 'REQUESTED',
+    APPROVED: 'APPROVED',
+    IN_TRANSIT: 'IN_TRANSIT',
+    RECEIVED: 'RECEIVED',
+    CANCELLED: 'CANCELLED'
+};
+export const RecommendationStatus = {
+    PENDING: 'PENDING',
+    ACCEPTED: 'ACCEPTED',
+    REJECTED: 'REJECTED',
+    EXPIRED: 'EXPIRED'
+};
+//# sourceMappingURL=enums.js.map

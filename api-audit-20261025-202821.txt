@@ -1,0 +1,156 @@
+﻿AFRIBLOOD BACKEND API AUDIT
+Generated: 2026-10-25T20:28:21.3584372+03:00
+Root: C:\Users\THINKPAD\afriblood-backend
+
+=== CONTROLLERS / ROUTES ===
+FILE: src\app.controller.ts
+  L4: @Controller()
+  L8: @Get()
+FILE: src\analytics\analytics.controller.ts
+  L4: @Controller('analytics')
+  L8: @Get()
+FILE: src\audit-logs\audit-logs.controller.ts
+  L12: @Controller('audit-logs')
+  L17: @Get()
+  L22: @Get('user/:userId')
+  L27: @Get('entity/:entity/:entityId')
+FILE: src\auth\auth.controller.ts
+  L13: @Controller('auth')
+  L18: @Post('login')
+  L23: @Get('me')
+FILE: src\blood-release\blood-release.controller.ts
+  L3: @Controller('blood-release')
+FILE: src\blood-reservations\blood-reservations.controller.ts
+  L5: @Controller('blood-reservations')
+  L9: @Get()
+  L11: @Get(':id')
+  L13: @Post()
+  L17: @Patch(':id/release')
+FILE: src\blood-transfers\blood-transfers.controller.ts
+  L15: @Controller('blood-transfers')
+  L22: @Post()
+  L27: @Get()
+  L32: @Get(':id')
+  L37: @Post(':id/approve')
+  L42: @Post(':id/dispatch')
+  L47: @Post(':id/receive')
+FILE: src\blood-unit-events\blood-unit-events.controller.ts
+  L12: @Controller('blood-unit-events')
+  L19: @Get()
+  L24: @Get('unit/:bloodUnitId')
+FILE: src\blood-unit-events\traceability.controller.ts
+  L4: @Controller('traceability')
+  L8: @Get()
+FILE: src\dashboard\dashboard.controller.ts
+  L3: @Controller('dashboard')
+FILE: src\demand-forecasting\demand-forecasting.controller.ts
+  L4: @Controller('demand-forecasting')
+  L8: @Get()
+FILE: src\donations\donations.controller.ts
+  L13: @Controller('donations')
+  L19: @Post()
+  L24: @Get()
+  L29: @Get(':id')
+FILE: src\donors\donors.controller.ts
+  L16: @Controller('donors')
+  L20: @Post()
+  L25: @Get()
+  L30: @Get(':id')
+  L35: @Patch(':id')
+  L43: @Delete(':id')
+FILE: src\facilities\facilities.controller.ts
+  L16: @Controller('facilities')
+  L22: @Post()
+  L27: @Get()
+  L32: @Get(':id')
+  L37: @Patch(':id')
+  L45: @Delete(':id')
+FILE: src\health\health.controller.ts
+  L3: @Controller('health')
+FILE: src\hospital-requests\hospital-requests.controller.ts
+  L13: @Controller('hospital-requests')
+  L19: @Post()
+  L24: @Get()
+  L29: @Get('facility/:facilityId')
+  L36: @Get(':id')
+FILE: src\interoperability\interoperability.controller.ts
+  L3: @Controller('interoperability')
+FILE: src\inventory\inventory.controller.ts
+  L13: @Controller('inventory')
+  L19: @Post()
+  L24: @Get()
+  L29: @Get(':id')
+FILE: src\laboratory\laboratory.controller.ts
+  L13: @Controller('laboratory')
+  L19: @Post('tests')
+  L24: @Get('tests')
+  L29: @Get('units/:id/tests')
+FILE: src\notifications\notifications.controller.ts
+  L5: @Controller('notifications')
+  L14: @Get()
+  L16: @Get('unread-count')
+  L18: @Patch('read-all')
+  L20: @Patch(':id/read')
+FILE: src\redistribution\redistribution.controller.ts
+  L4: @Controller('redistribution')
+  L8: @Get()
+FILE: src\reports\reports.controller.ts
+  L4: @Controller('reports')
+  L8: @Get()
+FILE: src\roles\roles.controller.ts
+  L3: @Controller('roles')
+FILE: src\stock-matching\stock-matching.controller.ts
+  L10: @Controller('stock-matching')
+  L16: @Get('availability')
+  L21: @Get('requests/:id')
+FILE: src\transfusions\transfusions.controller.ts
+  L3: @Controller('transfusions')
+FILE: src\users\users.controller.ts
+  L18: @Controller('users')
+  L23: @Post()
+  L28: @Get()
+  L33: @Get(':id')
+  L38: @Patch(':id')
+  L46: @Patch(':id/reset-password')
+
+=== POTENTIAL STUBS / PLACEHOLDERS ===
+src\auth\auth.module.ts:19: throw new Error('JWT_SECRET must contain at least 32 characters');
+src\prisma\prisma.service.ts:20: throw new Error(
+
+=== PRISMA MODELS ===
+model Facility {
+model User {
+model Donor {
+model Donation {
+model BloodUnit {
+model LabTest {
+model HospitalRequest {
+model BloodReservation {
+model BloodTransfer {
+model BloodUnitEvent {
+model DemandForecast {
+model RedistributionRecommendation {
+model AuditLog {
+model Notification {
+
+=== NPM SCRIPTS ===
+build: nest build
+deploy: nest deploy
+format: prettier --write "src/**/*.ts" "test/**/*.ts"
+start: nest start
+start:dev: nest start --watch
+start:debug: nest start --debug --watch
+start:prod: node dist/main
+lint: oxlint --type-aware src/ test/
+test: vitest run
+test:watch: vitest
+test:cov: vitest run --coverage
+test:debug: vitest --inspect-brk --no-file-parallelism
+test:e2e: vitest run --config ./vitest.config.e2e.ts
+
+=== BUILD ===
+Build exit code: 0
+Build log: C:\Users\THINKPAD\afriblood-backend\api-build-20261025-202821.txt
+
+=== LOCAL SERVER HEALTH (OPTIONAL) ===
+GET /auth/me: HTTP 401

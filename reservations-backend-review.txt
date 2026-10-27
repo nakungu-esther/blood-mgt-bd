@@ -1,0 +1,536 @@
+AFRIBLOOD RESERVATIONS BACKEND REVIEW
+
+========== src\blood-reservations\blood-reservations.controller.ts ==========
+import { Controller } from '@nestjs/common';
+
+@Controller('blood-reservations')
+export class BloodReservationsController {}
+
+========== src\blood-reservations\blood-reservations.service.ts ==========
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class BloodReservationsService {}
+
+========== src\blood-reservations\blood-reservations.module.ts ==========
+import { Module } from '@nestjs/common';
+import { BloodReservationsController } from './blood-reservations.controller.js';
+import { BloodReservationsService } from './blood-reservations.service.js';
+
+@Module({
+  controllers: [BloodReservationsController],
+  providers: [BloodReservationsService]
+})
+export class BloodReservationsModule {}
+
+========== src\app.module.ts ==========
+
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { PrismaModule } from './prisma/prisma.module.js';
+import { FacilitiesModule } from './facilities/facilities.module.js';
+import { DonorsModule } from './donors/donors.module.js';
+import { DonationsModule } from './donations/donations.module.js';
+import { InventoryModule } from './inventory/inventory.module.js';
+import { LaboratoryModule } from './laboratory/laboratory.module.js';
+import { HospitalRequestsModule } from './hospital-requests/hospital-requests.module.js';
+import { StockMatchingModule } from './stock-matching/stock-matching.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { UsersModule } from './users/users.module.js';
+import { RolesModule } from './roles/roles.module.js';
+import { BloodTransfersModule } from './blood-transfers/blood-transfers.module.js';
+import { BloodReservationsModule } from './blood-reservations/blood-reservations.module.js';
+import { BloodReleaseModule } from './blood-release/blood-release.module.js';
+import { TransfusionsModule } from './transfusions/transfusions.module.js';
+import { BloodUnitEventsModule } from './blood-unit-events/blood-unit-events.module.js';
+import { AuditLogsModule } from './audit-logs/audit-logs.module.js';
+import { DemandForecastingModule } from './demand-forecasting/demand-forecasting.module.js';
+import { RedistributionModule } from './redistribution/redistribution.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
+import { ReportsModule } from './reports/reports.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { InteroperabilityModule } from './interoperability/interoperability.module.js';
+import { HealthModule } from './health/health.module.js';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    PrismaModule,
+    FacilitiesModule,
+    DonorsModule,
+    DonationsModule,
+    InventoryModule,
+    LaboratoryModule,
+    HospitalRequestsModule,
+    StockMatchingModule,
+    AuthModule,
+    UsersModule,
+    RolesModule,
+    BloodTransfersModule,
+    BloodReservationsModule,
+    BloodReleaseModule,
+    TransfusionsModule,
+    BloodUnitEventsModule,
+    AuditLogsModule,
+    DemandForecastingModule,
+    RedistributionModule,
+    DashboardModule,
+    AnalyticsModule,
+    ReportsModule,
+    NotificationsModule,
+    InteroperabilityModule,
+    HealthModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+
+========== prisma\schema.prisma ==========
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMERATIONS
+// ==========================================
+
+enum FacilityType {
+  BLOOD_BANK
+  COLLECTION_CENTER
+  LABORATORY
+  HOSPITAL
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  FACILITY_ADMIN
+  BLOOD_BANK_OFFICER
+  LAB_TECHNICIAN
+  HOSPITAL_OFFICER
+  LOGISTICS_OFFICER
+  ANALYST
+}
+
+enum BloodGroup {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  AB_POS
+  AB_NEG
+  O_POS
+  O_NEG
+}
+
+enum ComponentType {
+  WHOLE_BLOOD
+  RED_CELLS
+  PLASMA
+  PLATELETS
+}
+
+enum DonationStatus {
+  COLLECTED
+  PROCESSING
+  TESTED
+  COMPLETED
+  REJECTED
+}
+
+enum TestResult {
+  PENDING
+  NEGATIVE
+  POSITIVE
+  INDETERMINATE
+}
+
+enum BloodUnitStatus {
+  QUARANTINED
+  AVAILABLE
+  RESERVED
+  IN_TRANSIT
+  ISSUED
+  TRANSFUSED
+  EXPIRED
+  DISCARDED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  CANCELLED
+  REJECTED
+}
+
+enum RequestPriority {
+  ROUTINE
+  URGENT
+  EMERGENCY
+}
+
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  FULFILLED
+  EXPIRED
+}
+
+enum TransferStatus {
+  REQUESTED
+  APPROVED
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+enum RecommendationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+// ==========================================
+// 1. HEALTHCARE FACILITIES
+// ==========================================
+
+model Facility {
+  id        String       @id @default(uuid())
+  name      String
+  code      String       @unique
+  type      FacilityType
+  country   String
+  region    String?
+  district  String?
+  address   String?
+  latitude  Float?
+  longitude Float?
+  isActive  Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  donations        Donation[]
+  bloodUnits       BloodUnit[]
+  hospitalRequests HospitalRequest[]
+
+  outgoingTransfers BloodTransfer[] @relation("TransferSource")
+  incomingTransfers BloodTransfer[] @relation("TransferDestination")
+
+  forecasts           DemandForecast[]
+  recommendationsFrom RedistributionRecommendation[] @relation("RecommendationSource")
+  recommendationsTo   RedistributionRecommendation[] @relation("RecommendationDestination")
+
+  @@index([country, region])
+}
+
+// ==========================================
+// 2. USERS AND ACCESS CONTROL
+// ==========================================
+
+model User {
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  isActive     Boolean  @default(true)
+
+  facilityId String?
+  facility   Facility? @relation(fields: [facilityId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@index([facilityId])
+}
+
+// ==========================================
+// 3. BLOOD DONORS
+// ==========================================
+
+model Donor {
+  id          String      @id @default(uuid())
+  donorCode   String      @unique
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  bloodGroup  BloodGroup?
+  phone       String?
+  email       String?
+  isActive    Boolean     @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  donations Donation[]
+}
+
+// ==========================================
+// 4. BLOOD DONATIONS
+// ==========================================
+
+model Donation {
+  id           String         @id @default(uuid())
+  donationCode String         @unique
+  donorId      String
+  facilityId   String
+  donatedAt    DateTime
+  status       DonationStatus @default(COLLECTED)
+  volumeMl     Int?
+  notes        String?
+
+  donor    Donor    @relation(fields: [donorId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  bloodUnits BloodUnit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([donorId, donatedAt])
+  @@index([facilityId, donatedAt])
+}
+
+// ==========================================
+// 5. BLOOD INVENTORY
+// ==========================================
+
+model BloodUnit {
+  id         String          @id @default(uuid())
+  unitCode   String          @unique
+  donationId String
+  facilityId String
+  bloodGroup BloodGroup
+  component  ComponentType
+  status     BloodUnitStatus @default(QUARANTINED)
+
+  volumeMl    Int?
+  collectedAt DateTime
+  expiresAt   DateTime
+  releasedAt  DateTime?
+  issuedAt    DateTime?
+
+  donation Donation @relation(fields: [donationId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  labTests     LabTest[]
+  reservations BloodReservation[]
+  events       BloodUnitEvent[]
+  transfers    BloodTransfer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([facilityId, status])
+  @@index([bloodGroup, component, status])
+  @@index([expiresAt])
+  @@index([donationId])
+}
+
+// ==========================================
+// 6. LABORATORY TESTING
+// ==========================================
+
+model LabTest {
+  id           String     @id @default(uuid())
+  bloodUnitId  String
+  testName     String
+  result       TestResult @default(PENDING)
+  testedAt     DateTime?
+  technicianId String?
+  notes        String?
+
+  bloodUnit BloodUnit @relation(fields: [bloodUnitId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bloodUnitId])
+  @@index([result])
+}
+
+// ==========================================
+// 7. HOSPITAL BLOOD REQUESTS
+// ==========================================
+
+model HospitalRequest {
+  id          String          @id @default(uuid())
+  requestCode String          @unique
+  facilityId  String
+  bloodGroup  BloodGroup
+  component   ComponentType
+  quantity    Int
+  priority    RequestPriority @default(ROUTINE)
+  status      RequestStatus   @default(PENDING)
+
+  requiredBy DateTime?
+  notes      String?
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  reservations BloodReservation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([facilityId, status])
+  @@index([bloodGroup, component])
+}
+
+// ==========================================
+// 8. BLOOD RESERVATIONS
+// ==========================================
+
+model BloodReservation {
+  id          String            @id @default(uuid())
+  requestId   String
+  bloodUnitId String
+  status      ReservationStatus @default(ACTIVE)
+
+  reservedAt DateTime  @default(now())
+  expiresAt  DateTime?
+
+  request   HospitalRequest @relation(fields: [requestId], references: [id])
+  bloodUnit BloodUnit       @relation(fields: [bloodUnitId], references: [id])
+
+  @@index([requestId])
+  @@index([bloodUnitId, status])
+}
+
+// ==========================================
+// 9. BLOOD TRANSFERS
+// ==========================================
+
+model BloodTransfer {
+  id                    String         @id @default(uuid())
+  transferCode          String         @unique
+  bloodUnitId           String
+  sourceFacilityId      String
+  destinationFacilityId String
+  status                TransferStatus @default(REQUESTED)
+
+  requestedAt  DateTime  @default(now())
+  approvedAt   DateTime?
+  dispatchedAt DateTime?
+  receivedAt   DateTime?
+  notes        String?
+
+  bloodUnit BloodUnit @relation(fields: [bloodUnitId], references: [id])
+
+  sourceFacility      Facility @relation("TransferSource", fields: [sourceFacilityId], references: [id])
+  destinationFacility Facility @relation("TransferDestination", fields: [destinationFacilityId], references: [id])
+
+  @@index([sourceFacilityId, status])
+  @@index([destinationFacilityId, status])
+  @@index([bloodUnitId])
+}
+
+// ==========================================
+// 10. BLOOD UNIT TRACEABILITY
+// ==========================================
+
+model BloodUnitEvent {
+  id          String  @id @default(uuid())
+  bloodUnitId String
+  eventType   String
+  description String?
+  actorId     String?
+  facilityId  String?
+  metadata    Json?
+
+  occurredAt DateTime @default(now())
+
+  bloodUnit BloodUnit @relation(fields: [bloodUnitId], references: [id])
+
+  @@index([bloodUnitId, occurredAt])
+}
+
+// ==========================================
+// 11. AI DEMAND FORECASTS
+// ==========================================
+
+model DemandForecast {
+  id              String        @id @default(uuid())
+  facilityId      String
+  bloodGroup      BloodGroup
+  component       ComponentType
+  forecastDate    DateTime
+  predictedUnits  Int
+  modelVersion    String?
+  confidenceScore Float?
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([facilityId, forecastDate])
+  @@index([bloodGroup, component])
+}
+
+// ==========================================
+// 12. AI REDISTRIBUTION RECOMMENDATIONS
+// ==========================================
+
+model RedistributionRecommendation {
+  id                    String               @id @default(uuid())
+  sourceFacilityId      String
+  destinationFacilityId String
+  bloodGroup            BloodGroup
+  component             ComponentType
+  suggestedUnits        Int
+  reason                String
+  confidenceScore       Float?
+  status                RecommendationStatus @default(PENDING)
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+  reviewedBy String?
+
+  sourceFacility      Facility @relation("RecommendationSource", fields: [sourceFacilityId], references: [id])
+  destinationFacility Facility @relation("RecommendationDestination", fields: [destinationFacilityId], references: [id])
+
+  @@index([sourceFacilityId, status])
+  @@index([destinationFacilityId, status])
+}
+
+// ==========================================
+// 13. SYSTEM AUDIT LOGS
+// ==========================================
+
+model AuditLog {
+  id        String  @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+}

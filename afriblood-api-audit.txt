@@ -1,0 +1,152 @@
+AFRIBLOOD BACKEND API AUDIT
+Generated: 10/25/2026 17:39:34
+
+=== CONTROLLERS AND API ROUTES ===
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\app.controller.ts
+Line 4: @Controller()
+Line 8: @Get()
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\analytics\analytics.controller.ts
+Line 3: @Controller('analytics')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\audit-logs\audit-logs.controller.ts
+Line 12: @Controller('audit-logs')
+Line 17: @Get()
+Line 22: @Get('user/:userId')
+Line 27: @Get('entity/:entity/:entityId')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\auth\auth.controller.ts
+Line 13: @Controller('auth')
+Line 18: @Post('login')
+Line 23: @Get('me')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\blood-release\blood-release.controller.ts
+Line 3: @Controller('blood-release')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\blood-reservations\blood-reservations.controller.ts
+Line 3: @Controller('blood-reservations')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\blood-transfers\blood-transfers.controller.ts
+Line 15: @Controller('blood-transfers')
+Line 22: @Post()
+Line 27: @Get()
+Line 32: @Get(':id')
+Line 37: @Post(':id/approve')
+Line 42: @Post(':id/dispatch')
+Line 47: @Post(':id/receive')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\blood-unit-events\blood-unit-events.controller.ts
+Line 12: @Controller('blood-unit-events')
+Line 19: @Get()
+Line 24: @Get('unit/:bloodUnitId')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\dashboard\dashboard.controller.ts
+Line 3: @Controller('dashboard')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\demand-forecasting\demand-forecasting.controller.ts
+Line 3: @Controller('demand-forecasting')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\donations\donations.controller.ts
+Line 13: @Controller('donations')
+Line 19: @Post()
+Line 24: @Get()
+Line 29: @Get(':id')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\donors\donors.controller.ts
+Line 16: @Controller('donors')
+Line 20: @Post()
+Line 25: @Get()
+Line 30: @Get(':id')
+Line 35: @Patch(':id')
+Line 43: @Delete(':id')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\facilities\facilities.controller.ts
+Line 16: @Controller('facilities')
+Line 22: @Post()
+Line 27: @Get()
+Line 32: @Get(':id')
+Line 37: @Patch(':id')
+Line 45: @Delete(':id')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\health\health.controller.ts
+Line 3: @Controller('health')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\hospital-requests\hospital-requests.controller.ts
+Line 13: @Controller('hospital-requests')
+Line 19: @Post()
+Line 24: @Get()
+Line 29: @Get('facility/:facilityId')
+Line 36: @Get(':id')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\interoperability\interoperability.controller.ts
+Line 3: @Controller('interoperability')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\inventory\inventory.controller.ts
+Line 13: @Controller('inventory')
+Line 19: @Post()
+Line 24: @Get()
+Line 29: @Get(':id')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\laboratory\laboratory.controller.ts
+Line 13: @Controller('laboratory')
+Line 19: @Post('tests')
+Line 24: @Get('tests')
+Line 29: @Get('units/:id/tests')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\notifications\notifications.controller.ts
+Line 3: @Controller('notifications')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\redistribution\redistribution.controller.ts
+Line 3: @Controller('redistribution')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\reports\reports.controller.ts
+Line 3: @Controller('reports')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\roles\roles.controller.ts
+Line 3: @Controller('roles')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\stock-matching\stock-matching.controller.ts
+Line 10: @Controller('stock-matching')
+Line 16: @Get('availability')
+Line 21: @Get('requests/:id')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\transfusions\transfusions.controller.ts
+Line 3: @Controller('transfusions')
+
+FILE: C:\Users\THINKPAD\afriblood-backend\src\users\users.controller.ts
+Line 18: @Controller('users')
+Line 23: @Post()
+Line 28: @Get()
+Line 33: @Get(':id')
+Line 38: @Patch(':id')
+Line 46: @Patch(':id/reset-password')
+
+=== PRISMA DATABASE MODELS ===
+enum FacilityType {
+enum UserRole {
+enum BloodGroup {
+enum ComponentType {
+enum DonationStatus {
+enum TestResult {
+enum BloodUnitStatus {
+enum RequestStatus {
+enum RequestPriority {
+enum ReservationStatus {
+enum TransferStatus {
+enum RecommendationStatus {
+model Facility {
+model User {
+model Donor {
+model Donation {
+model BloodUnit {
+model LabTest {
+model HospitalRequest {
+model BloodReservation {
+model BloodTransfer {
+model BloodUnitEvent {
+model DemandForecast {
+model RedistributionRecommendation {
+model AuditLog {
+
+=== GLOBAL API PREFIX ===

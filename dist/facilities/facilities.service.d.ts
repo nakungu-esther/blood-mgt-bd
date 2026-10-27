@@ -1,0 +1,82 @@
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateFacilityDto } from './dto/create-facility.dto.js';
+import { UpdateFacilityDto } from './dto/update-facility.dto.js';
+export declare class FacilitiesService {
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    create(dto: CreateFacilityDto): Promise<{
+        id: string;
+        name: string;
+        code: string;
+        type: import("../generated/prisma/enums.js").FacilityType;
+        country: string;
+        region: string | null;
+        district: string | null;
+        address: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    findAll(): Promise<{
+        id: string;
+        name: string;
+        code: string;
+        type: import("../generated/prisma/enums.js").FacilityType;
+        country: string;
+        region: string | null;
+        district: string | null;
+        address: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    findOne(id: string): Promise<{
+        id: string;
+        name: string;
+        code: string;
+        type: import("../generated/prisma/enums.js").FacilityType;
+        country: string;
+        region: string | null;
+        district: string | null;
+        address: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    update(id: string, dto: UpdateFacilityDto): Promise<{
+        id: string;
+        name: string;
+        code: string;
+        type: import("../generated/prisma/enums.js").FacilityType;
+        country: string;
+        region: string | null;
+        district: string | null;
+        address: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    remove(id: string): Promise<{
+        id: string;
+        name: string;
+        code: string;
+        type: import("../generated/prisma/enums.js").FacilityType;
+        country: string;
+        region: string | null;
+        district: string | null;
+        address: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+}

@@ -1,0 +1,53 @@
+import { PrismaService } from '../prisma/prisma.service.js';
+import { Prisma } from '../generated/prisma/client.js';
+import { CreateDonorDto } from './dto/create-donor.dto.js';
+import { UpdateDonorDto } from './dto/update-donor.dto.js';
+export declare class DonorsService {
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    create(dto: CreateDonorDto): Promise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        firstName: string;
+        lastName: string;
+        email: string | null;
+        donorCode: string;
+        dateOfBirth: Date | null;
+        bloodGroup: import("../generated/prisma/enums.js").BloodGroup | null;
+        phone: string | null;
+    }>;
+    findAll(): Prisma.PrismaPromise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        firstName: string;
+        lastName: string;
+        donorCode: string;
+        bloodGroup: import("../generated/prisma/enums.js").BloodGroup | null;
+    }[]>;
+    findOne(id: string): Promise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        firstName: string;
+        lastName: string;
+        donorCode: string;
+        bloodGroup: import("../generated/prisma/enums.js").BloodGroup | null;
+    }>;
+    update(id: string, dto: UpdateDonorDto): Promise<{
+        id: string;
+        isActive: boolean;
+        updatedAt: Date;
+        firstName: string;
+        lastName: string;
+        donorCode: string;
+        bloodGroup: import("../generated/prisma/enums.js").BloodGroup | null;
+    }>;
+    remove(id: string): Promise<{
+        id: string;
+        isActive: boolean;
+        donorCode: string;
+    }>;
+}
