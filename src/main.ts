@@ -1,3 +1,4 @@
+
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -6,17 +7,18 @@ import { AppModule } from './app.module.js';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Allow AfriBlood React frontend to access the API
   app.enableCors({
     origin: [
       'https://inspiring-florentine-54bb2d.netlify.app',
+      'https://euphonious-blancmange-bf924f.netlify.app',
+      'http://localhost:5173',
       'http://127.0.0.1:5173',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   });
 
-  // Validate incoming API requests
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -27,9 +29,9 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3000);
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
-  console.log(`AfriBlood Backend running at http://localhost:${port}`);
+  console.log(`AfriBlood Backend running on port ${port}`);
 }
 
 bootstrap().catch((error) => {
